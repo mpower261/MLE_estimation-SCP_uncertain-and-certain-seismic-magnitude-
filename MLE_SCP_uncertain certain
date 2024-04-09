@@ -1,0 +1,74 @@
+% Sasan Motaghed, Mohammad Mohammadi, Nasrollah Eftekhari and Mozhgan Khazaei
+% January 03, 2024
+
+% This code was developed by Mohammad Mohammadi (BKATU)
+% to estimation of SCP parameters for uncertain seismic magnitude values
+% based on maximum likelihood approach. It is meant to accompany the 
+% following paper:
+
+
+% Motaghed, S., Mohammadi, M., Eftekhari, N. and Khazaee, M.
+% SCP Parameters Estimation for Catalogs with Uncertain Seismic Magnitude Values.
+% submited to Acta Geophysica
+
+#data with uncertainty
+x1=my_data[,3] #lower bound
+x2=my_data[,4] #upper bound
+#log likelihood function with uncertainty
+extendDistr_u <- function(a,q,x1,x2,log=FALSE) {
+numerator=-(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*x2))^((2-q)/(1-q))+(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*x1))^((2-q)/(1-q))
+denominator=-(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*max(x2)))^((2-q)/(1-q))+(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*min(x1)))^((2-q)/(1-q))
+  pdf <- numerator/denominator
+if (log)
+  pdf <- log(pdf)
+ return(pdf)
+}
+nLL_u=function(p){
+a=p[1]
+q=p[2]
+log_ll=sum(extendDistr_u(a,q,x1,x2,log=TRUE))
+return(-log_ll)
+}
+###########################################
+#data withoud uncertainty
+mag=(x1+x2)/2
+minm=3.5
+#log likelihood function without uncertainty
+extendDistr <- function(a,q,mag,log=FALSE) {
+numerator=(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*mag))^(1/(1-q))*a*(2-q)^(1/(-q+2))*2*10^(2*mag)*log(10)
+denominator=-(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*max(mag)))^((2-q)/(1-q))+(1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*minm))^((2-q)/(1-q))
+  pdf <- numerator/denominator
+if (log)
+  pdf <- log(pdf)
+ return(pdf)
+}
+nLL=function(p){
+a=p[1]
+q=p[2]
+log_ll=sum(extendDistr(a,q,mag,log=TRUE))
+return(-log_ll)
+}
+############################################
+#Estimation of parameters using the nonlinear approach
+#In this case, we use the data withoud uncertainty 
+m <- seq(3.5,max(mag)-.2,by=.1)
+Fn=ecdf(mag)
+dep=1-Fn(m)
+curve = data.frame(dep,m)
+library(minpack.lm)
+curve.nlslrc = nlsLM(dep ~ (1+a*(q-1)*(2-q)^((1-q)/(q-2))*10^(2*m))^((2-q)/(1-q)),
+                     start=list(a = 10^(-6),q = 1.5),
+                        data = curve)
+coef1=coef(curve.nlslrc)
+a2=coef1[1];q2=coef1[2]
+#a2 and q2 are used as initial values in the optim function
+##############################################
+#MLE with uncertainty
+optim_u=optim(c(a2,q2), nLL_u, lower=c(10^(-12),1.2),upper=c(10^(-4),1.9),method = "L-BFGS-B")
+a1_u=optim_u$par[1]
+q1_u=optim_u$par[2]
+#MLE withoud uncertainty
+optim1=optim(c(a2,q2), nLL, lower=c(10^(-12), 1.2),upper=c(10^(-4),1.9),method = "L-BFGS-B")
+a1=optim1$par[1]
+q1=optim1$par[2]
+
