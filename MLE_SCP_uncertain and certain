@@ -2,7 +2,7 @@
 % January 03, 2024
 
 % This code was developed by Mohammad Mohammadi (BKATU)
-% to estimation of SCP parameters for uncertain seismic magnitude values
+% to estimation of SCP parameters for uncertain and certain seismic magnitude values
 % based on maximum likelihood approach. It is meant to accompany the 
 % following paper:
 
